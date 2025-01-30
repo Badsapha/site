@@ -139,6 +139,65 @@
         .nav-arrow.next {
             right: 10px;  /* Changed from -25px */
         }
+
+        /* Responsive styles */
+        @media screen and (max-width: 920px) {
+            .album-container {
+                width: 100%;
+                max-width: 600px;
+                height: 80vh;
+            }
+
+            .spread {
+                min-width: 100%;
+            }
+
+            .album {
+                width: 300%;
+            }
+
+            .photo-space {
+                height: 180px;
+            }
+
+            .nav-arrow {
+                width: 40px;
+                height: 40px;
+                font-size: 24px;
+            }
+        }
+
+        @media screen and (max-width: 480px) {
+            .album-container {
+                height: 70vh;
+            }
+
+            .photo-space {
+                height: 120px;
+            }
+
+            .page {
+                padding: 10px;
+            }
+
+            .nav-arrow {
+                width: 30px;
+                height: 30px;
+                font-size: 18px;
+            }
+        }
+
+        /* Touch-friendly styles */
+        @media (hover: none) {
+            .photo-space:hover .add-photo {
+                color: #ccc;
+            }
+
+            .nav-arrow {
+                background: rgba(255, 255, 255, 0.9);
+                padding: 10px;
+            }
+        }
     </style>
 </head>
 <body>
@@ -216,21 +275,39 @@
             photoSpaces.forEach((space, index) => {
                 const savedMedia = localStorage.getItem(`media_${index}`);
                 if (savedMedia) {
-                    const mediaData = JSON.parse(savedMedia);
-                    const plusSign = space.querySelector('.add-photo');
-                    const preview = mediaData.type.startsWith('image/') ? 
-                        document.createElement('img') : 
-                        document.createElement('video');
+                    try {
+                        const mediaData = JSON.parse(savedMedia);
+                        const plusSign = space.querySelector('.add-photo');
+                        let preview;
 
-                    preview.src = mediaData.data;
-                    preview.classList.add('preview');
-                    if (mediaData.type.startsWith('video/')) {
-                        preview.controls = true;
-                        preview.autoplay = false;
+                        if (mediaData.type.startsWith('video/')) {
+                            preview = document.createElement('video');
+                            preview.controls = true;
+                            preview.autoplay = false;
+                            preview.classList.add('preview');
+                            preview.src = mediaData.data;
+                            
+                            // Ensure video loads properly
+                            preview.load();
+                        } else if (mediaData.type.startsWith('image/')) {
+                            preview = document.createElement('img');
+                            preview.classList.add('preview');
+                            preview.src = mediaData.data;
+                        }
+
+                        if (preview) {
+                            // Remove any existing preview
+                            const existingPreview = space.querySelector('.preview');
+                            if (existingPreview) {
+                                existingPreview.remove();
+                            }
+
+                            plusSign.classList.add('hidden');
+                            space.appendChild(preview);
+                        }
+                    } catch (error) {
+                        console.error('Error loading media:', error);
                     }
-
-                    plusSign.classList.add('hidden');
-                    space.appendChild(preview);
                 }
             });
         }
@@ -295,11 +372,40 @@
 
         function updateAlbum() {
             const album = document.getElementById('album');
-            album.style.transform = `translateX(${-currentPage * 900}px)`; // 900px is the width of each spread
+            const containerWidth = document.querySelector('.album-container').offsetWidth;
+            album.style.transform = `translateX(${-currentPage * containerWidth}px)`;
         }
 
         // Add this line at the end of your script to load saved media when the page loads
-        document.addEventListener('DOMContentLoaded', loadFromLocalStorage);
+        document.addEventListener('DOMContentLoaded', function() {
+            loadFromLocalStorage();
+
+            // Add touch support for navigation
+            let touchStartX = 0;
+            let touchEndX = 0;
+
+            document.addEventListener('touchstart', e => {
+                touchStartX = e.changedTouches[0].screenX;
+            });
+
+            document.addEventListener('touchend', e => {
+                touchEndX = e.changedTouches[0].screenX;
+                handleSwipe();
+            });
+
+            function handleSwipe() {
+                const swipeThreshold = 50;
+                const swipeLength = touchEndX - touchStartX;
+
+                if (Math.abs(swipeLength) > swipeThreshold) {
+                    if (swipeLength > 0) {
+                        previousPage();
+                    } else {
+                        nextPage();
+                    }
+                }
+            }
+        });
     </script>
 </body>
 </html>
